@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { db } from './client';
 
 async function migrate() {
-  const migrationsDir = path.join(__dirname, 'migrations');
+  // __dirname points to dist/db/ after tsc; SQL files stay in src/db/migrations/
+  const migrationsDir = path.join(process.cwd(), 'src/db/migrations');
   const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
 
   await db.query(`

@@ -1,4 +1,14 @@
 import 'dotenv/config';
+
+// Fail fast with a clear message rather than a cryptic crash downstream
+const REQUIRED_ENV = ['DATABASE_URL', 'REDIS_URL', 'JWT_SECRET'];
+const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missing.length > 0) {
+  console.error(`[startup] Missing required environment variables: ${missing.join(', ')}`);
+  console.error('[startup] Set these in Railway dashboard → your service → Variables');
+  process.exit(1);
+}
+
 import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fastifyCors from '@fastify/cors';

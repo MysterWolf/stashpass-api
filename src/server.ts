@@ -8,6 +8,7 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import { errorHandler } from './middleware/error.middleware';
 import { authRoutes } from './routes/auth';
 import { walletRoutes } from './routes/wallet';
+import { operatorRoutes } from './routes/operators';
 
 const app = Fastify({ logger: true });
 
@@ -20,8 +21,9 @@ app.register(fastifyJwt, { secret: process.env.JWT_SECRET! });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
-app.register(authRoutes,   { prefix: '/auth' });
-app.register(walletRoutes, { prefix: '/wallet' });
+app.register(authRoutes,     { prefix: '/auth' });
+app.register(walletRoutes,   { prefix: '/wallet' });
+app.register(operatorRoutes, { prefix: '/operators' });
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 

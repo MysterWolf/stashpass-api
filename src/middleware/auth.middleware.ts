@@ -8,7 +8,7 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
   }
 }
 
-export async function requireRole(role: string) {
+export function requireRole(role: string) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     await requireAuth(request, reply);
     const user = request.user as { role: string };

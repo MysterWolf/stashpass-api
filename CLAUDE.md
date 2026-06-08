@@ -100,11 +100,13 @@ src/
 - [x] Routes: `/auth/*`, `/wallet/*`
 - [x] Middleware: `requireAuth`, `requireRole`, error handler
 
-### Phase 2 — Circles
-- [ ] `POST /circles` — create, invite code generation
-- [ ] `POST /circles/:id/join` — join by invite code
-- [ ] `POST /circles/:id/share` — transfer points to circle member
-- [ ] Circle share writes two `circle_share`/`circle_receive` transactions atomically
+### Phase 2 — Operators ✓
+- [x] `GET /operators/search?lat&lng&radius&template` — Haversine geo search, collapses locations per operator
+- [x] `GET /operators/:id` — public operator profile
+- [x] `GET /operators/:id/locations` — all active locations
+- [x] `POST /operators` — create operator (superadmin only)
+
+> **Circles are NOT part of this API.** Circle / social sharing features will be built inside the CannaGuide app. The `circles`, `circle_members`, and `circle_shares` tables exist in the schema for future cross-app use but no API routes will be added here.
 
 ### Phase 3 — Operator Admin
 - [ ] Operator-scoped auth (role: `operator_admin`)
@@ -135,3 +137,4 @@ npm run dev                   # tsx watch — hot reload
 | Date | Work |
 |------|------|
 | 2026-06-08 | Phase 1 scaffolded — schema, auth service, wallet service, routes, CLAUDE.md |
+| 2026-06-08 | Phase 2 complete — operator routes (profile, locations, create, geo search). Circles scoped out — belongs in CannaGuide. |

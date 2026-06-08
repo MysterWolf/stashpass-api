@@ -34,6 +34,35 @@ export interface Transaction {
   created_at: Date;
 }
 
+export interface Operator {
+  id: string;
+  franchise_group_id: string | null;
+  name: string;
+  slug: string;
+  category: string;
+  logo_url: string | null;
+  points_per_dollar: string;
+  redemption_rate: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface Location {
+  id: string;
+  operator_id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+  lat: string | null;
+  lng: string | null;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface JwtPayload {
   sub: string;   // user id
   role: string;

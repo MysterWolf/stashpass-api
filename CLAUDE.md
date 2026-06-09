@@ -2,7 +2,8 @@
 
 **Stack:** Node.js · Fastify 4 · TypeScript 5 · PostgreSQL · Redis  
 **Repo:** github.com/MysterWolf/stashpass-api  
-**Phase:** 1 (Auth + Wallet)
+**Phase:** 1+2 complete (Auth + Wallet + Operators)  
+**Deployed:** https://stashpass-api-production.up.railway.app
 
 ---
 
@@ -58,9 +59,12 @@ src/
   routes/
     auth.ts           — /auth/* endpoints
     wallet.ts         — /wallet/* endpoints
+    operators.ts      — /operators/* endpoints (Phase 2)
   services/
     auth.service.ts   — OTP, magic link, JWT, user upsert
     wallet.service.ts — earn, redeem, balance, history
+    operator.service.ts — operator CRUD + Haversine geo search
+    email.service.ts  — Resend OTP delivery (instantiated per-call, NOT at module level)
   db/
     client.ts         — pg Pool singleton
     redis.ts          — ioredis singleton
@@ -88,19 +92,38 @@ src/
 | `OTP_TTL_SECONDS` | `600` | Redis TTL for OTP / magic token |
 | `OTP_LENGTH` | `6` | Digit count for numeric OTP |
 | `CORS_ORIGIN` | `*` | Lock down in production |
+| `RESEND_API_KEY` | — | Required in prod for email OTP delivery |
+| `FROM_EMAIL` | `noreply@stashpass.app` | Must be a verified Resend domain; use `onboarding@resend.dev` for testing |
+
+---
+
+## Deployment (Railway)
+
+`railway.toml` is at the repo root. Start command: `node dist/db/migrate.js && node dist/server.js`.
+
+**Invariants:**
+- `PORT` is injected by Railway automatically — never hardcode it. Server binds `host: '0.0.0.0'`.
+- Migration runner uses `path.join(process.cwd(), 'src/db/migrations')` — not `__dirname` — because after `tsc` the JS lands in `dist/db/` but SQL files remain under `src/db/migrations/`.
+- `dotenv` is a runtime dependency (not devDependency) — it runs in the compiled `dist/` bundle.
+- **Do NOT instantiate `new Resend(...)` at module load time.** It throws immediately when `RESEND_API_KEY` is undefined, crashing the process before `app.listen()`. Instantiate inside the function that uses it.
+- **Do NOT put throw guards in `db/client.ts` or `db/redis.ts`.** TypeScript (CommonJS emit) hoists `require()` calls; a throw at the top of those modules crashes before `server.ts` startup logs run. `server.ts` owns env var validation.
+- All startup log messages use `console.log` (stdout), not `console.error` (stderr). Railway Deploy Logs may not surface stderr in all views.
+- Startup checkpoints are `[startup] N/6` — if a deploy is 502ing, the last visible checkpoint tells you where it crashed.
+
+**Required Railway Variables:** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `FROM_EMAIL`, `NODE_ENV=production`
 
 ---
 
 ## Phase Roadmap
 
-### Phase 1 — CURRENT
+### Phase 1 — COMPLETE
 - [x] Database schema (all 9 tables + triggers)
 - [x] Auth service: OTP request/verify, magic link request/verify, JWT issue, refresh token rotation, logout
 - [x] Wallet service: earn, redeem, balance, history
 - [x] Routes: `/auth/*`, `/wallet/*`
 - [x] Middleware: `requireAuth`, `requireRole`, error handler
 
-### Phase 2 — Operators ✓
+### Phase 2 — Operators — COMPLETE
 - [x] `GET /operators/search?lat&lng&radius&template` — Haversine geo search, collapses locations per operator
 - [x] `GET /operators/:id` — public operator profile
 - [x] `GET /operators/:id/locations` — all active locations
@@ -138,3 +161,6 @@ npm run dev                   # tsx watch — hot reload
 |------|------|
 | 2026-06-08 | Phase 1 scaffolded — schema, auth service, wallet service, routes, CLAUDE.md |
 | 2026-06-08 | Phase 2 complete — operator routes (profile, locations, create, geo search). Circles scoped out — belongs in CannaGuide. |
+| 2026-06-08 | Railway deployment — railway.toml, .env.example, dotenv added to prod deps |
+| 2026-06-08 | Resend email OTP — email.service.ts; instantiate per-call not at module level |
+| 2026-06-08 | Startup crash fixes — removed module-level throws from db/client.ts + db/redis.ts; all startup logs on stdout; [startup] 1/6…6/6 checkpoints in server.ts |

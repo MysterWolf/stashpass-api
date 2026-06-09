@@ -1,11 +1,14 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM   = process.env.FROM_EMAIL ?? 'noreply@stashpass.app';
-
+// Resend client and FROM are read at call time, not module load time.
+// Instantiating Resend with an undefined key throws immediately, which would
+// crash the server before app.listen() if done at the top level.
 export async function sendOtpEmail(to: string, otp: string): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const from   = process.env.FROM_EMAIL ?? 'noreply@stashpass.app';
+
   const { error } = await resend.emails.send({
-    from:    FROM,
+    from,
     to,
     subject: `Your StashPass code: ${otp}`,
     html: `

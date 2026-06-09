@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import * as authService from '../services/auth.service';
+import { sendOtpEmail } from '../services/email.service';
 import { requireAuth } from '../middleware/auth.middleware';
 
 const RequestOtpBody = z.object({
@@ -34,8 +35,17 @@ export async function authRoutes(app: FastifyInstance) {
     const contact = (body.phone ?? body.email)!;
     const otp = await authService.issueOtp(contact);
 
-    // In production: deliver via SMS (Twilio) or email (SMTP).
-    // Returned here for dev/testing only — strip before go-live.
+    if (body.email) {
+      try {
+        await sendOtpEmail(body.email, otp);
+      } catch (err) {
+        // In dev, _dev_otp is returned so the caller still has the code.
+        // In production, surface the failure so the user knows delivery broke.
+        if (process.env.NODE_ENV === 'production') throw err;
+        req.log.warn({ err }, 'Resend delivery failed (dev — _dev_otp still returned)');
+      }
+    }
+
     return reply.code(200).send({
       message: 'OTP sent',
       ...(process.env.NODE_ENV !== 'production' && { _dev_otp: otp }),

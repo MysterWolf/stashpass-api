@@ -4,10 +4,13 @@ import path from 'path';
 import { db } from './client';
 
 async function migrate() {
+  process.stdout.write('[migrate] starting\n');
   // __dirname points to dist/db/ after tsc; SQL files stay in src/db/migrations/
   const migrationsDir = path.join(process.cwd(), 'src/db/migrations');
+  process.stdout.write(`[migrate] migrationsDir=${migrationsDir}\n`);
   const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
 
+  process.stdout.write('[migrate] connecting to DB\n');
   await db.query(`
     CREATE TABLE IF NOT EXISTS _migrations (
       id         SERIAL PRIMARY KEY,
@@ -39,4 +42,7 @@ async function migrate() {
   console.log('Migrations complete.');
 }
 
-migrate().catch((err) => { console.error(err); process.exit(1); });
+migrate().catch((err) => {
+  process.stdout.write(`[migrate] FAILED: ${err.message}\n${err.stack}\n`);
+  process.exit(1);
+});

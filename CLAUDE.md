@@ -108,7 +108,9 @@ src/
 - **Do NOT instantiate `new Resend(...)` at module load time.** It throws immediately when `RESEND_API_KEY` is undefined, crashing the process before `app.listen()`. Instantiate inside the function that uses it.
 - **Do NOT put throw guards in `db/client.ts` or `db/redis.ts`.** TypeScript (CommonJS emit) hoists `require()` calls; a throw at the top of those modules crashes before `server.ts` startup logs run. `server.ts` owns env var validation.
 - All startup log messages use `console.log` (stdout), not `console.error` (stderr). Railway Deploy Logs may not surface stderr in all views.
-- Startup checkpoints are `[startup] N/6` — if a deploy is 502ing, the last visible checkpoint tells you where it crashed.
+- Startup checkpoints are `[startup] 0` through `[startup] 19` — if a deploy is 502ing, the last visible checkpoint in the runtime Logs tab tells you exactly which module load or plugin registration crashed. Migration checkpoints are `[migrate] starting / migrationsDir / connecting to DB / FAILED`.
+- `server.ts` uses explicit `require()` calls (not `import`) so logs can be interleaved between each module load. Do not convert back to `import` statements — TypeScript hoists those to the top of the CommonJS output, making pre-import logging impossible.
+- The start command uses `;` not `&&` — migrate failure no longer blocks the server. This is intentional for diagnostics; restore `&&` once the server is stable.
 
 **Required Railway Variables:** `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `FROM_EMAIL`, `NODE_ENV=production`
 
@@ -164,3 +166,6 @@ npm run dev                   # tsx watch — hot reload
 | 2026-06-08 | Railway deployment — railway.toml, .env.example, dotenv added to prod deps |
 | 2026-06-08 | Resend email OTP — email.service.ts; instantiate per-call not at module level |
 | 2026-06-08 | Startup crash fixes — removed module-level throws from db/client.ts + db/redis.ts; all startup logs on stdout; [startup] 1/6…6/6 checkpoints in server.ts |
+| 2026-06-09 | Diagnostic startup logging — server.ts rewritten with explicit require() calls so each module load is bracketed by process.stdout.write; [startup] 0…19 checkpoints; migrate.ts gets [migrate] prefix logs |
+| 2026-06-09 | railway.toml start command changed from && to ; — server.js now starts even if migrate.js fails, so both can be debugged independently |
+| 2026-06-09 | TypeScript fix — src/@types/fastify-jwt.d.ts augments FastifyJWT interface with payload/user shape; resolves req.user and req.jwtVerify errors across all routes and middleware; build is now error-free |

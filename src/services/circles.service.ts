@@ -36,14 +36,15 @@ export async function createJoinRequest(data: {
 }): Promise<'ok' | 'not_found'> {
   const circle = await getCircleById(data.circleId);
   if (!circle) return 'not_found';
+  // Auto-approve: QR possession is the gate, no owner action needed
   await db.query(
-    `INSERT INTO cg_join_requests (circle_id, device_id, display_name)
-     VALUES ($1, $2, $3)
+    `INSERT INTO cg_join_requests (circle_id, device_id, display_name, status, resolved_at)
+     VALUES ($1, $2, $3, 'approved', NOW())
      ON CONFLICT (circle_id, device_id) DO UPDATE
        SET display_name = EXCLUDED.display_name,
-           status = 'pending',
+           status = 'approved',
            requested_at = NOW(),
-           resolved_at = NULL`,
+           resolved_at = NOW()`,
     [data.circleId, data.deviceId, data.displayName]
   );
   return 'ok';

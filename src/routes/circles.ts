@@ -106,6 +106,17 @@ export async function circlesRoutes(app: FastifyInstance) {
     return reply.send({ ok: true });
   });
 
+  // DELETE /circles/:id — owner only, cascades all data
+  app.delete('/:id', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { id } = req.params as { id: string };
+    const owner = deviceId(req);
+    if (!owner) return reply.code(400).send({ error: 'x-device-id header required' });
+    const ok = await circlesService.deleteCircle(id, owner);
+    if (!ok) return reply.code(403).send({ error: 'forbidden' });
+    return reply.send({ ok: true });
+  });
+
   // ── Shares ──────────────────────────────────────────────────────────────────
 
   const CreateShareBody = z.object({

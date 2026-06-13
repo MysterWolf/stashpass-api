@@ -80,6 +80,14 @@ export async function resolveRequest(
   return true;
 }
 
+export async function deleteCircle(circleId: string, ownerDeviceId: string): Promise<boolean> {
+  const circle = await getCircleById(circleId);
+  if (!circle || circle.owner_id !== ownerDeviceId) return false;
+  // Cascades to cg_join_requests, cg_shares, cg_reactions via ON DELETE CASCADE
+  await db.query(`DELETE FROM cg_circles WHERE id = $1`, [circleId]);
+  return true;
+}
+
 // ── Shares ────────────────────────────────────────────────────────────────────
 
 export async function createShare(data: {

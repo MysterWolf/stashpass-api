@@ -42,6 +42,9 @@ process.stdout.write('[startup] 9 — routes/wallet\n');
 const { operatorRoutes } = req('./routes/operators');
 process.stdout.write('[startup] 10 — routes/operators\n');
 
+const { circlesRoutes }  = req('./routes/circles');
+process.stdout.write('[startup] 10b — routes/circles\n');
+
 // ─── Env var check ────────────────────────────────────────────────────────────
 
 const REQUIRED_ENV = ['DATABASE_URL', 'REDIS_URL', 'JWT_SECRET'];
@@ -73,6 +76,7 @@ process.stdout.write('[startup] 16 — jwt registered\n');
 app.register(authRoutes,     { prefix: '/auth' });
 app.register(walletRoutes,   { prefix: '/wallet' });
 app.register(operatorRoutes, { prefix: '/operators' });
+app.register(circlesRoutes,  { prefix: '/circles' });
 app.get('/health', async () => ({ status: 'ok', ts: new Date().toISOString() }));
 app.setErrorHandler(errorHandler);
 process.stdout.write('[startup] 17 — all routes registered\n');

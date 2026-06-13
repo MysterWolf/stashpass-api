@@ -105,4 +105,64 @@ export async function circlesRoutes(app: FastifyInstance) {
     if (!ok) return reply.code(403).send({ error: 'forbidden' });
     return reply.send({ ok: true });
   });
+
+  // ── Shares ──────────────────────────────────────────────────────────────────
+
+  const CreateShareBody = z.object({
+    sharer_id:    z.string().min(1),
+    display_name: z.string().max(100).default(''),
+    type:         z.string().min(1),
+    payload:      z.string().default('{}'),
+    note:         z.string().max(500).default(''),
+    timestamp:    z.number().int(),
+  });
+
+  // POST /circles/:id/shares
+  app.post('/:id/shares', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { id } = req.params as { id: string };
+    const body = CreateShareBody.parse(req.body);
+    const shareId = await circlesService.createShare({
+      circleId:    id,
+      sharerId:    body.sharer_id,
+      displayName: body.display_name,
+      type:        body.type,
+      payload:     body.payload,
+      note:        body.note,
+      timestamp:   body.timestamp,
+    });
+    return reply.code(201).send({ id: shareId });
+  });
+
+  // GET /circles/:id/shares
+  app.get('/:id/shares', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { id } = req.params as { id: string };
+    const shares = await circlesService.getShares(id);
+    return reply.send({ shares });
+  });
+
+  // ── Reactions ────────────────────────────────────────────────────────────────
+
+  const ReactionBody = z.object({
+    user_id: z.string().min(1),
+    type:    z.enum(['save', 'fire', 'curious']),
+  });
+
+  // POST /circles/:id/shares/:shareId/reactions — toggle
+  app.post('/:id/shares/:shareId/reactions', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { shareId } = req.params as { id: string; shareId: string };
+    const body = ReactionBody.parse(req.body);
+    const action = await circlesService.toggleReaction(shareId, body.user_id, body.type);
+    return reply.send({ action });
+  });
+
+  // GET /circles/:id/shares/:shareId/reactions
+  app.get('/:id/shares/:shareId/reactions', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { shareId } = req.params as { id: string; shareId: string };
+    const reactions = await circlesService.getReactions(shareId);
+    return reply.send({ reactions });
+  });
 }

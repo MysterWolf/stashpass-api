@@ -69,3 +69,31 @@ export interface JwtPayload {
   iat?: number;
   exp?: number;
 }
+
+export interface OperatorProfile {
+  id: string;
+  operator_id: string;
+  about: string | null;
+  hours: Record<string, string> | null;
+  website: string | null;
+  instagram: string | null;
+  leafly_url: string | null;
+  dutchie_url: string | null;
+  other_ordering_url: string | null;
+  ordering_platform: string | null;
+  payment_methods: string[] | null;
+  black_owned: boolean;
+  woman_owned: boolean;
+  lgbtq_friendly: boolean;
+  veteran_owned: boolean;
+  specials: Array<{ id: string; item: string; description: string; updated_at: number }> | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  background_color: string | null;
+  logo_url: string | null;
+  cover_image_url: string | null;
+  palette: string;
+  date_updated: Date;
+  lat: string | null;
+  lng: string | null;
+}

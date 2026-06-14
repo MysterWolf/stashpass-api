@@ -1,5 +1,30 @@
+import { randomUUID } from 'crypto';
 import { db } from '../db/client';
-import type { Operator, Location } from '../types';
+import type { Operator, Location, OperatorProfile } from '../types';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    + '-' + Date.now().toString(36);
+}
+
+function normalizeSpecials(
+  specials?: Array<{ id?: string; item: string; description?: string; updated_at?: number }> | null,
+): Array<{ id: string; item: string; description: string; updated_at: number }> | null {
+  if (!specials) return null;
+  return specials.map(s => ({
+    id: s.id ?? randomUUID(),
+    item: s.item,
+    description: s.description ?? '',
+    updated_at: s.updated_at ?? Date.now(),
+  }));
+}
 
 // ─── Get one operator ─────────────────────────────────────────────────────────
 
@@ -24,57 +49,347 @@ export async function getLocations(operatorId: string): Promise<Location[]> {
 // ─── Create operator ──────────────────────────────────────────────────────────
 
 export interface CreateOperatorParams {
-  franchise_group_id?: string;
   name: string;
-  slug: string;
-  category: string;
-  logo_url?: string;
-  points_per_dollar?: number;
-  redemption_rate?: number;
+  city?: string;
+  state?: string;
+  category?: string;
+  tier?: string;
 }
 
 export async function createOperator(params: CreateOperatorParams): Promise<Operator> {
-  const {
-    franchise_group_id = null,
-    name,
-    slug,
-    category,
-    logo_url = null,
-    points_per_dollar = 1.0,
-    redemption_rate = 0.01,
-  } = params;
+  const { name, city = null, state = null, category = 'general', tier = 'standard' } = params;
+  const slug = slugify(name);
 
   const { rows } = await db.query<Operator>(
-    `INSERT INTO operators
-       (franchise_group_id, name, slug, category, logo_url, points_per_dollar, redemption_rate)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO operators (name, slug, category, city, state, tier)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [franchise_group_id, name, slug, category, logo_url, points_per_dollar, redemption_rate],
+    [name, slug, category, city, state, tier],
   );
   return rows[0];
 }
 
-// ─── Geo search (Haversine, no PostGIS required) ──────────────────────────────
+// ─── Operator profile — get ───────────────────────────────────────────────────
 
-export interface SearchParams {
+export async function getProfile(operatorId: string): Promise<OperatorProfile | null> {
+  const { rows } = await db.query<OperatorProfile>(
+    'SELECT * FROM operator_profiles WHERE operator_id = $1',
+    [operatorId],
+  );
+  return rows[0] ?? null;
+}
+
+// ─── Operator profile — full replace (POST) ───────────────────────────────────
+
+export type ProfileData = {
+  about?: string | null;
+  hours?: Record<string, string> | null;
+  website?: string | null;
+  instagram?: string | null;
+  leafly_url?: string | null;
+  dutchie_url?: string | null;
+  other_ordering_url?: string | null;
+  ordering_platform?: string | null;
+  payment_methods?: string[] | null;
+  black_owned?: boolean;
+  woman_owned?: boolean;
+  lgbtq_friendly?: boolean;
+  veteran_owned?: boolean;
+  specials?: Array<{ id?: string; item: string; description?: string; updated_at?: number }> | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
+  background_color?: string | null;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
+  palette?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+};
+
+export async function setProfile(operatorId: string, data: ProfileData): Promise<OperatorProfile> {
+  const specials = normalizeSpecials(data.specials ?? null);
+
+  const { rows } = await db.query<OperatorProfile>(
+    `INSERT INTO operator_profiles (
+       operator_id, about, hours, website, instagram, leafly_url, dutchie_url,
+       other_ordering_url, ordering_platform, payment_methods,
+       black_owned, woman_owned, lgbtq_friendly, veteran_owned,
+       specials, primary_color, secondary_color, background_color,
+       logo_url, cover_image_url, palette, lat, lng, date_updated
+     ) VALUES (
+       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+       $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, NOW()
+     )
+     ON CONFLICT (operator_id) DO UPDATE SET
+       about             = EXCLUDED.about,
+       hours             = EXCLUDED.hours,
+       website           = EXCLUDED.website,
+       instagram         = EXCLUDED.instagram,
+       leafly_url        = EXCLUDED.leafly_url,
+       dutchie_url       = EXCLUDED.dutchie_url,
+       other_ordering_url = EXCLUDED.other_ordering_url,
+       ordering_platform = EXCLUDED.ordering_platform,
+       payment_methods   = EXCLUDED.payment_methods,
+       black_owned       = EXCLUDED.black_owned,
+       woman_owned       = EXCLUDED.woman_owned,
+       lgbtq_friendly    = EXCLUDED.lgbtq_friendly,
+       veteran_owned     = EXCLUDED.veteran_owned,
+       specials          = EXCLUDED.specials,
+       primary_color     = EXCLUDED.primary_color,
+       secondary_color   = EXCLUDED.secondary_color,
+       background_color  = EXCLUDED.background_color,
+       logo_url          = EXCLUDED.logo_url,
+       cover_image_url   = EXCLUDED.cover_image_url,
+       palette           = EXCLUDED.palette,
+       lat               = EXCLUDED.lat,
+       lng               = EXCLUDED.lng,
+       date_updated      = NOW()
+     RETURNING *`,
+    [
+      operatorId,
+      data.about ?? null,
+      data.hours != null ? JSON.stringify(data.hours) : null,
+      data.website ?? null,
+      data.instagram ?? null,
+      data.leafly_url ?? null,
+      data.dutchie_url ?? null,
+      data.other_ordering_url ?? null,
+      data.ordering_platform ?? null,
+      data.payment_methods != null ? JSON.stringify(data.payment_methods) : null,
+      data.black_owned ?? false,
+      data.woman_owned ?? false,
+      data.lgbtq_friendly ?? false,
+      data.veteran_owned ?? false,
+      specials != null ? JSON.stringify(specials) : null,
+      data.primary_color ?? null,
+      data.secondary_color ?? null,
+      data.background_color ?? null,
+      data.logo_url ?? null,
+      data.cover_image_url ?? null,
+      data.palette ?? 'cannaguide_default',
+      data.lat ?? null,
+      data.lng ?? null,
+    ],
+  );
+  return rows[0];
+}
+
+// ─── Operator profile — partial update (PUT) ──────────────────────────────────
+
+export async function patchProfile(operatorId: string, data: Partial<ProfileData>): Promise<OperatorProfile | null> {
+  const existing = await getProfile(operatorId);
+  if (!existing) return null;
+
+  // Build SET clause dynamically — only update keys present in the request body
+  const values: unknown[] = [operatorId];
+  const sets: string[] = [];
+
+  function maybeSet(col: string, val: unknown, transform?: (v: unknown) => unknown) {
+    values.push(transform ? transform(val) : val);
+    sets.push(`${col} = $${values.length}`);
+  }
+
+  if ('about' in data) maybeSet('about', data.about);
+  if ('hours' in data) maybeSet('hours', data.hours, v => v != null ? JSON.stringify(v) : null);
+  if ('website' in data) maybeSet('website', data.website);
+  if ('instagram' in data) maybeSet('instagram', data.instagram);
+  if ('leafly_url' in data) maybeSet('leafly_url', data.leafly_url);
+  if ('dutchie_url' in data) maybeSet('dutchie_url', data.dutchie_url);
+  if ('other_ordering_url' in data) maybeSet('other_ordering_url', data.other_ordering_url);
+  if ('ordering_platform' in data) maybeSet('ordering_platform', data.ordering_platform);
+  if ('payment_methods' in data) maybeSet('payment_methods', data.payment_methods, v => v != null ? JSON.stringify(v) : null);
+  if ('black_owned' in data) maybeSet('black_owned', data.black_owned ?? false);
+  if ('woman_owned' in data) maybeSet('woman_owned', data.woman_owned ?? false);
+  if ('lgbtq_friendly' in data) maybeSet('lgbtq_friendly', data.lgbtq_friendly ?? false);
+  if ('veteran_owned' in data) maybeSet('veteran_owned', data.veteran_owned ?? false);
+  if ('specials' in data) {
+    const specials = normalizeSpecials(data.specials ?? null);
+    values.push(specials != null ? JSON.stringify(specials) : null);
+    sets.push(`specials = $${values.length}`);
+  }
+  if ('primary_color' in data) maybeSet('primary_color', data.primary_color);
+  if ('secondary_color' in data) maybeSet('secondary_color', data.secondary_color);
+  if ('background_color' in data) maybeSet('background_color', data.background_color);
+  if ('logo_url' in data) maybeSet('logo_url', data.logo_url);
+  if ('cover_image_url' in data) maybeSet('cover_image_url', data.cover_image_url);
+  if ('palette' in data) maybeSet('palette', data.palette ?? 'cannaguide_default');
+  if ('lat' in data) maybeSet('lat', data.lat);
+  if ('lng' in data) maybeSet('lng', data.lng);
+
+  if (sets.length === 0) return existing;
+
+  sets.push('date_updated = NOW()');
+
+  const { rows } = await db.query<OperatorProfile>(
+    `UPDATE operator_profiles SET ${sets.join(', ')} WHERE operator_id = $1 RETURNING *`,
+    values,
+  );
+  return rows[0] ?? null;
+}
+
+// ─── Specials — replace array ─────────────────────────────────────────────────
+
+export async function replaceSpecials(
+  operatorId: string,
+  specials: Array<{ id?: string; item: string; description?: string; updated_at?: number }>,
+): Promise<OperatorProfile | null> {
+  const normalized = normalizeSpecials(specials);
+  const { rows } = await db.query<OperatorProfile>(
+    `UPDATE operator_profiles SET specials = $2, date_updated = NOW()
+     WHERE operator_id = $1 RETURNING *`,
+    [operatorId, JSON.stringify(normalized)],
+  );
+  return rows[0] ?? null;
+}
+
+// ─── Specials — delete one by id ──────────────────────────────────────────────
+
+export async function deleteSpecial(operatorId: string, specialId: string): Promise<OperatorProfile | null> {
+  // Filter the JSONB array in Postgres, removing the element whose 'id' matches
+  const { rows } = await db.query<OperatorProfile>(
+    `UPDATE operator_profiles
+     SET specials = (
+       SELECT COALESCE(jsonb_agg(s), '[]'::jsonb)
+       FROM jsonb_array_elements(COALESCE(specials, '[]'::jsonb)) AS s
+       WHERE (s->>'id') <> $2
+     ),
+     date_updated = NOW()
+     WHERE operator_id = $1
+     RETURNING *`,
+    [operatorId, specialId],
+  );
+  return rows[0] ?? null;
+}
+
+// ─── Geo search — operators with profiles (lat/lng from operator_profiles) ───
+
+export interface NearbyWithProfile extends Operator {
+  distance_km: number;
+  profile: OperatorProfile | null;
+}
+
+export async function searchNearby(params: {
   lat: number;
   lng: number;
   radiusKm: number;
-  template?: string;  // maps to operators.category
+  template?: string;
+}): Promise<NearbyWithProfile[]> {
+  const { lat, lng, radiusKm, template } = params;
+
+  const values: unknown[] = [lat, lng, lat, radiusKm];
+  const categoryClause = template ? `AND o.category = $${values.push(template)}` : '';
+
+  const { rows } = await db.query<NearbyWithProfile & { profile_json: string | null }>(
+    `WITH nearby AS (
+       SELECT
+         o.*,
+         op.id                 AS profile_id,
+         op.about              AS profile_about,
+         op.hours              AS profile_hours,
+         op.website            AS profile_website,
+         op.instagram          AS profile_instagram,
+         op.leafly_url         AS profile_leafly_url,
+         op.dutchie_url        AS profile_dutchie_url,
+         op.other_ordering_url AS profile_other_ordering_url,
+         op.ordering_platform  AS profile_ordering_platform,
+         op.payment_methods    AS profile_payment_methods,
+         op.black_owned        AS profile_black_owned,
+         op.woman_owned        AS profile_woman_owned,
+         op.lgbtq_friendly     AS profile_lgbtq_friendly,
+         op.veteran_owned      AS profile_veteran_owned,
+         op.specials           AS profile_specials,
+         op.primary_color      AS profile_primary_color,
+         op.secondary_color    AS profile_secondary_color,
+         op.background_color   AS profile_background_color,
+         op.logo_url           AS profile_logo_url,
+         op.cover_image_url    AS profile_cover_image_url,
+         op.palette            AS profile_palette,
+         op.date_updated       AS profile_date_updated,
+         op.lat                AS profile_lat,
+         op.lng                AS profile_lng,
+         (
+           6371 * acos(
+             LEAST(1.0,
+               cos(radians($1)) * cos(radians(op.lat::float))
+               * cos(radians(op.lng::float) - radians($2))
+               + sin(radians($1)) * sin(radians(op.lat::float))
+             )
+           )
+         ) AS distance_km
+       FROM operators o
+       JOIN operator_profiles op ON op.operator_id = o.id
+       WHERE o.is_active = TRUE
+         AND op.lat IS NOT NULL AND op.lng IS NOT NULL
+         ${categoryClause}
+     )
+     SELECT * FROM nearby
+     WHERE distance_km <= $4
+     ORDER BY distance_km`,
+    values,
+  );
+
+  return rows.map(row => {
+    const {
+      profile_id, profile_about, profile_hours, profile_website, profile_instagram,
+      profile_leafly_url, profile_dutchie_url, profile_other_ordering_url,
+      profile_ordering_platform, profile_payment_methods,
+      profile_black_owned, profile_woman_owned, profile_lgbtq_friendly, profile_veteran_owned,
+      profile_specials, profile_primary_color, profile_secondary_color, profile_background_color,
+      profile_logo_url, profile_cover_image_url, profile_palette, profile_date_updated,
+      profile_lat, profile_lng,
+      ...op
+    } = row as typeof row & Record<string, unknown>;
+
+    const profile: OperatorProfile | null = profile_id ? {
+      id: profile_id as string,
+      operator_id: (op as Operator).id,
+      about: profile_about as string | null,
+      hours: profile_hours as Record<string, string> | null,
+      website: profile_website as string | null,
+      instagram: profile_instagram as string | null,
+      leafly_url: profile_leafly_url as string | null,
+      dutchie_url: profile_dutchie_url as string | null,
+      other_ordering_url: profile_other_ordering_url as string | null,
+      ordering_platform: profile_ordering_platform as string | null,
+      payment_methods: profile_payment_methods as string[] | null,
+      black_owned: profile_black_owned as boolean,
+      woman_owned: profile_woman_owned as boolean,
+      lgbtq_friendly: profile_lgbtq_friendly as boolean,
+      veteran_owned: profile_veteran_owned as boolean,
+      specials: profile_specials as OperatorProfile['specials'],
+      primary_color: profile_primary_color as string | null,
+      secondary_color: profile_secondary_color as string | null,
+      background_color: profile_background_color as string | null,
+      logo_url: profile_logo_url as string | null,
+      cover_image_url: profile_cover_image_url as string | null,
+      palette: (profile_palette as string) ?? 'cannaguide_default',
+      date_updated: profile_date_updated as Date,
+      lat: profile_lat as string | null,
+      lng: profile_lng as string | null,
+    } : null;
+
+    return { ...(op as Operator), distance_km: (op as unknown as { distance_km: number }).distance_km, profile };
+  });
 }
+
+// ─── Legacy location-based geo search (keeps /search working) ─────────────────
 
 export interface NearbyOperator extends Operator {
   distance_km: number;
   locations: Pick<Location, 'id' | 'name' | 'address' | 'city' | 'lat' | 'lng'>[];
 }
 
-export async function searchNearby(params: SearchParams): Promise<NearbyOperator[]> {
+export async function searchNearbyLocations(params: {
+  lat: number;
+  lng: number;
+  radiusKm: number;
+  template?: string;
+}): Promise<NearbyOperator[]> {
   const { lat, lng, radiusKm, template } = params;
 
   const values: unknown[] = [lat, lng, lat, radiusKm];
   const categoryClause = template ? `AND o.category = $${values.push(template)}` : '';
 
-  // Haversine formula returns distance in km. CTE avoids repeating the expression.
   const { rows } = await db.query<NearbyOperator & { location_id: string; location_name: string; location_address: string | null; location_city: string | null; location_lat: string | null; location_lng: string | null }>(
     `WITH nearby AS (
        SELECT
@@ -105,7 +420,6 @@ export async function searchNearby(params: SearchParams): Promise<NearbyOperator
     values,
   );
 
-  // Collapse multiple location rows per operator into one result with a locations array
   const map = new Map<string, NearbyOperator>();
   for (const row of rows) {
     if (!map.has(row.id)) {

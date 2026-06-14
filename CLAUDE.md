@@ -2,7 +2,7 @@
 
 **Stack:** Node.js · Fastify 4 · TypeScript 5 · PostgreSQL · Redis  
 **Repo:** github.com/MysterWolf/stashpass-api  
-**Phase:** 1+2 complete (Auth + Wallet + Operators)  
+**Phase:** 1+2+3-profiles complete (Auth + Wallet + Operators + Operator Profiles)  
 **Deployed:** https://stashpass-api-production.up.railway.app
 
 ---
@@ -129,7 +129,18 @@ src/
 - [x] `GET /operators/search?lat&lng&radius&template` — Haversine geo search, collapses locations per operator
 - [x] `GET /operators/:id` — public operator profile
 - [x] `GET /operators/:id/locations` — all active locations
-- [x] `POST /operators` — create operator (superadmin only)
+- [x] `POST /operators` — create operator (CIRCLES_API_SECRET auth, simplified body: name/city/state/category/tier)
+
+### Phase 2b — Operator Profiles — COMPLETE
+- [x] Migration `004_operator_profiles.sql` — adds city/state/tier to operators; new `operator_profiles` table (1:1 UNIQUE on operator_id, lat/lng geo index)
+- [x] `GET /operators/nearby?lat&lng&radius` — profile-based geo search (uses operator_profiles.lat/lng, returns profile embedded in each result)
+- [x] `GET /operators/:id/profile` — public fetch of full profile JSON
+- [x] `POST /operators/:id/profile` — push full profile (create or replace); CIRCLES_API_SECRET auth
+- [x] `PUT /operators/:id/profile` — partial update (only fields present in body); CIRCLES_API_SECRET auth
+- [x] `POST /operators/:id/specials` — replace entire specials array; auto-assigns UUIDs to items without ids; CIRCLES_API_SECRET auth
+- [x] `DELETE /operators/:id/specials/:specialId` — remove one special by UUID (JSONB filter in Postgres); CIRCLES_API_SECRET auth
+- [x] Auth: all write routes use `checkApiSecret` (`x-api-secret: $CIRCLES_API_SECRET` header); read routes are public
+- [x] Types: `OperatorProfile` interface in types.ts; `ProfileData` type in operator.service.ts
 
 > **Circles are NOT part of this API.** Circle / social sharing features will be built inside the CannaGuide app. The `circles`, `circle_members`, and `circle_shares` tables exist in the schema for future cross-app use but no API routes will be added here.
 
@@ -169,3 +180,4 @@ npm run dev                   # tsx watch — hot reload
 | 2026-06-09 | Diagnostic startup logging — server.ts rewritten with explicit require() calls so each module load is bracketed by process.stdout.write; [startup] 0…19 checkpoints; migrate.ts gets [migrate] prefix logs |
 | 2026-06-09 | railway.toml start command changed from && to ; — server.js now starts even if migrate.js fails, so both can be debugged independently |
 | 2026-06-09 | TypeScript fix — src/@types/fastify-jwt.d.ts augments FastifyJWT interface with payload/user shape; resolves req.user and req.jwtVerify errors across all routes and middleware; build is now error-free |
+| 2026-06-14 | Operator profiles — 004 migration (operator_profiles table + city/state/tier on operators); setProfile/patchProfile/replaceSpecials/deleteSpecial service funcs; POST+PUT /profile, POST+DELETE /specials, GET /nearby routes; CIRCLES_API_SECRET auth on all writes |

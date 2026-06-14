@@ -265,7 +265,7 @@ export async function deleteSpecial(operatorId: string, specialId: string): Prom
 
 export interface NearbyWithProfile extends Operator {
   distance_km: number;
-  profile: OperatorProfile | null;
+  profile: OperatorProfile;
 }
 
 export async function searchNearby(params: {
@@ -276,37 +276,16 @@ export async function searchNearby(params: {
 }): Promise<NearbyWithProfile[]> {
   const { lat, lng, radiusKm, template } = params;
 
-  const values: unknown[] = [lat, lng, lat, radiusKm];
+  // $1 = lat, $2 = lng, $3 = radiusKm (lat reused for both cos and sin terms)
+  const values: unknown[] = [lat, lng, radiusKm];
   const categoryClause = template ? `AND o.category = $${values.push(template)}` : '';
 
-  const { rows } = await db.query<NearbyWithProfile & { profile_json: string | null }>(
+  // row_to_json(op) returns the full profile row as a JSONB object — avoids aliasing every column
+  const { rows } = await db.query<Operator & { distance_km: number; profile: OperatorProfile }>(
     `WITH nearby AS (
        SELECT
          o.*,
-         op.id                 AS profile_id,
-         op.about              AS profile_about,
-         op.hours              AS profile_hours,
-         op.website            AS profile_website,
-         op.instagram          AS profile_instagram,
-         op.leafly_url         AS profile_leafly_url,
-         op.dutchie_url        AS profile_dutchie_url,
-         op.other_ordering_url AS profile_other_ordering_url,
-         op.ordering_platform  AS profile_ordering_platform,
-         op.payment_methods    AS profile_payment_methods,
-         op.black_owned        AS profile_black_owned,
-         op.woman_owned        AS profile_woman_owned,
-         op.lgbtq_friendly     AS profile_lgbtq_friendly,
-         op.veteran_owned      AS profile_veteran_owned,
-         op.specials           AS profile_specials,
-         op.primary_color      AS profile_primary_color,
-         op.secondary_color    AS profile_secondary_color,
-         op.background_color   AS profile_background_color,
-         op.logo_url           AS profile_logo_url,
-         op.cover_image_url    AS profile_cover_image_url,
-         op.palette            AS profile_palette,
-         op.date_updated       AS profile_date_updated,
-         op.lat                AS profile_lat,
-         op.lng                AS profile_lng,
+         row_to_json(op) AS profile,
          (
            6371 * acos(
              LEAST(1.0,
@@ -323,53 +302,12 @@ export async function searchNearby(params: {
          ${categoryClause}
      )
      SELECT * FROM nearby
-     WHERE distance_km <= $4
+     WHERE distance_km <= $3
      ORDER BY distance_km`,
     values,
   );
 
-  return rows.map(row => {
-    const {
-      profile_id, profile_about, profile_hours, profile_website, profile_instagram,
-      profile_leafly_url, profile_dutchie_url, profile_other_ordering_url,
-      profile_ordering_platform, profile_payment_methods,
-      profile_black_owned, profile_woman_owned, profile_lgbtq_friendly, profile_veteran_owned,
-      profile_specials, profile_primary_color, profile_secondary_color, profile_background_color,
-      profile_logo_url, profile_cover_image_url, profile_palette, profile_date_updated,
-      profile_lat, profile_lng,
-      ...op
-    } = row as typeof row & Record<string, unknown>;
-
-    const profile: OperatorProfile | null = profile_id ? {
-      id: profile_id as string,
-      operator_id: (op as Operator).id,
-      about: profile_about as string | null,
-      hours: profile_hours as Record<string, string> | null,
-      website: profile_website as string | null,
-      instagram: profile_instagram as string | null,
-      leafly_url: profile_leafly_url as string | null,
-      dutchie_url: profile_dutchie_url as string | null,
-      other_ordering_url: profile_other_ordering_url as string | null,
-      ordering_platform: profile_ordering_platform as string | null,
-      payment_methods: profile_payment_methods as string[] | null,
-      black_owned: profile_black_owned as boolean,
-      woman_owned: profile_woman_owned as boolean,
-      lgbtq_friendly: profile_lgbtq_friendly as boolean,
-      veteran_owned: profile_veteran_owned as boolean,
-      specials: profile_specials as OperatorProfile['specials'],
-      primary_color: profile_primary_color as string | null,
-      secondary_color: profile_secondary_color as string | null,
-      background_color: profile_background_color as string | null,
-      logo_url: profile_logo_url as string | null,
-      cover_image_url: profile_cover_image_url as string | null,
-      palette: (profile_palette as string) ?? 'cannaguide_default',
-      date_updated: profile_date_updated as Date,
-      lat: profile_lat as string | null,
-      lng: profile_lng as string | null,
-    } : null;
-
-    return { ...(op as Operator), distance_km: (op as unknown as { distance_km: number }).distance_km, profile };
-  });
+  return rows;
 }
 
 // ─── Legacy location-based geo search (keeps /search working) ─────────────────

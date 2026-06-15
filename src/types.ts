@@ -63,6 +63,23 @@ export interface Location {
   updated_at: Date;
 }
 
+export interface OperatorLocation {
+  id: string;
+  operator_id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  lat: string | null;
+  lng: string | null;
+  phone: string | null;
+  is_primary: boolean;
+  active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface JwtPayload {
   sub: string;   // user id
   role: string;

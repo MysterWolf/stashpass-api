@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { db } from '../db/client';
-import type { Operator, Location, OperatorProfile } from '../types';
+import type { Operator, Location, OperatorLocation, OperatorProfile } from '../types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ export async function getOperator(id: string): Promise<Operator | null> {
   return rows[0] ?? null;
 }
 
-// ─── Get locations for an operator ───────────────────────────────────────────
+// ─── Get locations for an operator (legacy `locations` table) ────────────────
 
 export async function getLocations(operatorId: string): Promise<Location[]> {
   const { rows } = await db.query<Location>(
@@ -44,6 +44,82 @@ export async function getLocations(operatorId: string): Promise<Location[]> {
     [operatorId],
   );
   return rows;
+}
+
+// ─── Operator locations (operator_locations table) ────────────────────────────
+
+export async function getOperatorLocations(operatorId: string): Promise<OperatorLocation[]> {
+  const { rows } = await db.query<OperatorLocation>(
+    'SELECT * FROM operator_locations WHERE operator_id = $1 AND active = TRUE ORDER BY is_primary DESC, name',
+    [operatorId],
+  );
+  return rows;
+}
+
+export interface LocationData {
+  name: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  phone?: string | null;
+  is_primary?: boolean;
+}
+
+export async function addOperatorLocation(operatorId: string, data: LocationData): Promise<OperatorLocation> {
+  const { rows } = await db.query<OperatorLocation>(
+    `INSERT INTO operator_locations (operator_id, name, address, city, state, zip, lat, lng, phone, is_primary)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING *`,
+    [operatorId, data.name, data.address ?? null, data.city ?? null, data.state ?? null,
+     data.zip ?? null, data.lat ?? null, data.lng ?? null, data.phone ?? null, data.is_primary ?? false],
+  );
+  return rows[0];
+}
+
+export async function updateOperatorLocation(
+  operatorId: string,
+  locationId: string,
+  data: Partial<LocationData>,
+): Promise<OperatorLocation | null> {
+  const values: unknown[] = [operatorId, locationId];
+  const sets: string[] = [];
+
+  if ('name' in data)       { values.push(data.name);       sets.push(`name = $${values.length}`); }
+  if ('address' in data)    { values.push(data.address);    sets.push(`address = $${values.length}`); }
+  if ('city' in data)       { values.push(data.city);       sets.push(`city = $${values.length}`); }
+  if ('state' in data)      { values.push(data.state);      sets.push(`state = $${values.length}`); }
+  if ('zip' in data)        { values.push(data.zip);        sets.push(`zip = $${values.length}`); }
+  if ('lat' in data)        { values.push(data.lat);        sets.push(`lat = $${values.length}`); }
+  if ('lng' in data)        { values.push(data.lng);        sets.push(`lng = $${values.length}`); }
+  if ('phone' in data)      { values.push(data.phone);      sets.push(`phone = $${values.length}`); }
+  if ('is_primary' in data) { values.push(data.is_primary); sets.push(`is_primary = $${values.length}`); }
+
+  if (sets.length === 0) {
+    const { rows } = await db.query<OperatorLocation>(
+      'SELECT * FROM operator_locations WHERE operator_id = $1 AND id = $2 AND active = TRUE',
+      [operatorId, locationId],
+    );
+    return rows[0] ?? null;
+  }
+
+  sets.push('updated_at = NOW()');
+
+  const { rows } = await db.query<OperatorLocation>(
+    `UPDATE operator_locations SET ${sets.join(', ')} WHERE operator_id = $1 AND id = $2 AND active = TRUE RETURNING *`,
+    values,
+  );
+  return rows[0] ?? null;
+}
+
+export async function deleteOperatorLocation(operatorId: string, locationId: string): Promise<boolean> {
+  const { rowCount } = await db.query(
+    'UPDATE operator_locations SET active = FALSE, updated_at = NOW() WHERE operator_id = $1 AND id = $2 AND active = TRUE',
+    [operatorId, locationId],
+  );
+  return (rowCount ?? 0) > 0;
 }
 
 // ─── Create operator ──────────────────────────────────────────────────────────

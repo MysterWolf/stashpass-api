@@ -59,6 +59,18 @@ const SpecialsBody = z.object({
   specials: z.array(SpecialSchema),
 });
 
+const LocationBody = z.object({
+  name: z.string().min(1).max(200),
+  address: z.string().max(300).nullable().optional(),
+  city: z.string().max(100).nullable().optional(),
+  state: z.string().max(60).nullable().optional(),
+  zip: z.string().max(20).nullable().optional(),
+  lat: z.number().min(-90).max(90).nullable().optional(),
+  lng: z.number().min(-180).max(180).nullable().optional(),
+  phone: z.string().max(30).nullable().optional(),
+  is_primary: z.boolean().optional(),
+});
+
 const NearbyQuery = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),
@@ -114,8 +126,42 @@ export async function operatorRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const operator = await operatorService.getOperator(id);
     if (!operator) return reply.code(404).send({ error: 'Operator not found' });
-    const locations = await operatorService.getLocations(id);
+    const locations = await operatorService.getOperatorLocations(id);
     return reply.code(200).send({ locations });
+  });
+
+  // POST /operators/:id/locations — add a location
+  app.post('/:id/locations', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { id } = req.params as { id: string };
+    const operator = await operatorService.getOperator(id);
+    if (!operator) return reply.code(404).send({ error: 'Operator not found' });
+    const body = LocationBody.parse(req.body);
+    const location = await operatorService.addOperatorLocation(id, body);
+    return reply.code(201).send({ location });
+  });
+
+  // PUT /operators/:id/locations/:locationId — update a location
+  app.put('/:id/locations/:locationId', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { id, locationId } = req.params as { id: string; locationId: string };
+    const operator = await operatorService.getOperator(id);
+    if (!operator) return reply.code(404).send({ error: 'Operator not found' });
+    const body = LocationBody.partial().parse(req.body);
+    const location = await operatorService.updateOperatorLocation(id, locationId, body);
+    if (!location) return reply.code(404).send({ error: 'Location not found' });
+    return reply.code(200).send({ location });
+  });
+
+  // DELETE /operators/:id/locations/:locationId — remove a location
+  app.delete('/:id/locations/:locationId', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { id, locationId } = req.params as { id: string; locationId: string };
+    const operator = await operatorService.getOperator(id);
+    if (!operator) return reply.code(404).send({ error: 'Operator not found' });
+    const deleted = await operatorService.deleteOperatorLocation(id, locationId);
+    if (!deleted) return reply.code(404).send({ error: 'Location not found' });
+    return reply.code(200).send({ deleted: true });
   });
 
   // GET /operators/:id/profile — public
@@ -123,8 +169,11 @@ export async function operatorRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const operator = await operatorService.getOperator(id);
     if (!operator) return reply.code(404).send({ error: 'Operator not found' });
-    const profile = await operatorService.getProfile(id);
-    return reply.code(200).send({ profile: profile ?? null });
+    const [profile, locations] = await Promise.all([
+      operatorService.getProfile(id),
+      operatorService.getOperatorLocations(id),
+    ]);
+    return reply.code(200).send({ profile: profile ? { ...profile, locations } : null });
   });
 
   // POST /operators — create operator

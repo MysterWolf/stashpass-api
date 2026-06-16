@@ -143,7 +143,7 @@ src/
 - [x] Types: `OperatorProfile` interface in types.ts; `ProfileData` type in operator.service.ts
 
 ### Phase 2c — Operator Locations — COMPLETE
-- [x] Migration `005_operator_locations.sql` — new `operator_locations` table (separate from legacy `locations`); index on `operator_id WHERE active`; `set_updated_at` trigger; seeded 5 Green Room locations
+- [x] Migration `005_operator_locations.sql` — new `operator_locations` table (separate from legacy `locations`); index on `operator_id WHERE active`; `set_updated_at` trigger; seeded 4 real Green Room locations (Hoboken primary, Montclair, Red Bank, Westfield)
 - [x] `GET /operators/:id/locations` — updated to query `operator_locations` (was legacy `locations`); public
 - [x] `POST /operators/:id/locations` — add a location; CIRCLES_API_SECRET auth
 - [x] `PUT /operators/:id/locations/:locationId` — partial update; CIRCLES_API_SECRET auth
@@ -189,4 +189,4 @@ npm run dev                   # tsx watch — hot reload
 | 2026-06-09 | railway.toml start command changed from && to ; — server.js now starts even if migrate.js fails, so both can be debugged independently |
 | 2026-06-09 | TypeScript fix — src/@types/fastify-jwt.d.ts augments FastifyJWT interface with payload/user shape; resolves req.user and req.jwtVerify errors across all routes and middleware; build is now error-free |
 | 2026-06-14 | Operator profiles — 004 migration (operator_profiles table + city/state/tier on operators); setProfile/patchProfile/replaceSpecials/deleteSpecial service funcs; POST+PUT /profile, POST+DELETE /specials, GET /nearby routes; CIRCLES_API_SECRET auth on all writes |
-| 2026-06-15 | Operator locations — 005 migration (operator_locations table + Green Room seed); getOperatorLocations/addOperatorLocation/updateOperatorLocation/deleteOperatorLocation service funcs; GET/POST/PUT/DELETE /operators/:id/locations routes; profile GET now embeds locations array |
+| 2026-06-15 | Operator locations — 005 migration (operator_locations table + Green Room seed: Hoboken/Montclair/Red Bank/Westfield); getOperatorLocations/addOperatorLocation/updateOperatorLocation/deleteOperatorLocation service funcs; GET/POST/PUT/DELETE /operators/:id/locations routes; profile GET now embeds locations array |

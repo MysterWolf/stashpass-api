@@ -40,6 +40,9 @@ export interface Operator {
   name: string;
   slug: string;
   category: string;
+  city: string | null;
+  state: string | null;
+  tier: string;
   logo_url: string | null;
   points_per_dollar: string;
   redemption_rate: string;

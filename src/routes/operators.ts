@@ -2,6 +2,11 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import * as operatorService from '../services/operator.service';
 
+const ListQuery = z.object({
+  tier:     z.string().optional(),
+  category: z.string().optional(),
+});
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 function checkApiSecret(req: FastifyRequest, reply: FastifyReply): boolean {
@@ -88,6 +93,16 @@ const SearchQuery = z.object({
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 export async function operatorRoutes(app: FastifyInstance) {
+
+  // GET /operators — list all active operators (must come before /:id)
+  app.get('/', async (req, reply) => {
+    const query = ListQuery.parse(req.query);
+    const operators = await operatorService.listOperators({
+      tier: query.tier,
+      category: query.category,
+    });
+    return reply.code(200).send({ operators });
+  });
 
   // GET /operators/nearby — profile-based geo search (must come before /:id)
   app.get('/nearby', async (req, reply) => {

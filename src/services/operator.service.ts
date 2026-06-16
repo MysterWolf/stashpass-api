@@ -26,6 +26,33 @@ function normalizeSpecials(
   }));
 }
 
+// ─── List all operators ───────────────────────────────────────────────────────
+
+export async function listOperators(params?: { tier?: string; category?: string }): Promise<(Operator & { location_count: number })[]> {
+  const values: unknown[] = [];
+  const wheres: string[] = ['o.is_active = TRUE'];
+
+  if (params?.tier) {
+    values.push(params.tier);
+    wheres.push(`o.tier = $${values.length}`);
+  }
+  if (params?.category) {
+    values.push(params.category);
+    wheres.push(`o.category = $${values.length}`);
+  }
+
+  const { rows } = await db.query<Operator & { location_count: number }>(
+    `SELECT o.*, COUNT(ol.id)::int AS location_count
+     FROM operators o
+     LEFT JOIN operator_locations ol ON ol.operator_id = o.id AND ol.active = TRUE
+     WHERE ${wheres.join(' AND ')}
+     GROUP BY o.id
+     ORDER BY o.name`,
+    values,
+  );
+  return rows;
+}
+
 // ─── Get one operator ─────────────────────────────────────────────────────────
 
 export async function getOperator(id: string): Promise<Operator | null> {

@@ -156,18 +156,53 @@ export interface CreateOperatorParams {
   city?: string;
   state?: string;
   category?: string;
+  subcategory?: string;
   tier?: string;
 }
 
 export async function createOperator(params: CreateOperatorParams): Promise<Operator> {
-  const { name, city = null, state = null, category = 'general', tier = 'standard' } = params;
+  const { name, city = null, state = null, category = 'general', subcategory = null, tier = 'standard' } = params;
   const slug = slugify(name);
 
   const { rows } = await db.query<Operator>(
-    `INSERT INTO operators (name, slug, category, city, state, tier)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO operators (name, slug, category, subcategory, city, state, tier)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [name, slug, category, city, state, tier],
+    [name, slug, category, subcategory, city, state, tier],
+  );
+  return rows[0];
+}
+
+export interface UpdateOperatorParams {
+  name?: string;
+  city?: string | null;
+  state?: string | null;
+  category?: string;
+  subcategory?: string | null;
+  tier?: string;
+}
+
+export async function updateOperator(id: string, params: UpdateOperatorParams): Promise<Operator> {
+  const values: unknown[] = [id];
+  const sets: string[] = [];
+
+  if ('name' in params)        { values.push(params.name);        sets.push(`name = $${values.length}`); }
+  if ('city' in params)        { values.push(params.city);        sets.push(`city = $${values.length}`); }
+  if ('state' in params)       { values.push(params.state);       sets.push(`state = $${values.length}`); }
+  if ('category' in params)    { values.push(params.category);    sets.push(`category = $${values.length}`); }
+  if ('subcategory' in params) { values.push(params.subcategory); sets.push(`subcategory = $${values.length}`); }
+  if ('tier' in params)        { values.push(params.tier);        sets.push(`tier = $${values.length}`); }
+
+  if (sets.length === 0) {
+    const { rows } = await db.query<Operator>('SELECT * FROM operators WHERE id = $1', [id]);
+    return rows[0];
+  }
+
+  sets.push('updated_at = NOW()');
+
+  const { rows } = await db.query<Operator>(
+    `UPDATE operators SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
+    values,
   );
   return rows[0];
 }

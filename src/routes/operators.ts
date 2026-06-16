@@ -25,7 +25,17 @@ const CreateOperatorBody = z.object({
   city: z.string().max(120).optional(),
   state: z.string().max(60).optional(),
   category: z.string().max(60).default('general'),
+  subcategory: z.string().max(60).optional(),
   tier: z.string().max(40).default('standard'),
+});
+
+const PatchOperatorBody = z.object({
+  name: z.string().min(1).max(120).optional(),
+  city: z.string().max(120).nullable().optional(),
+  state: z.string().max(60).nullable().optional(),
+  category: z.string().max(60).optional(),
+  subcategory: z.string().max(60).nullable().optional(),
+  tier: z.string().max(40).optional(),
 });
 
 const SpecialSchema = z.object({
@@ -200,6 +210,17 @@ export async function operatorRoutes(app: FastifyInstance) {
     const body = CreateOperatorBody.parse(req.body);
     const operator = await operatorService.createOperator(body);
     return reply.code(201).send({ operator });
+  });
+
+  // PATCH /operators/:id — partial update (name, city, state, category, subcategory, tier)
+  app.patch('/:id', async (req, reply) => {
+    if (!checkApiSecret(req, reply)) return;
+    const { id } = req.params as { id: string };
+    const operator = await operatorService.getOperator(id);
+    if (!operator) return reply.code(404).send({ error: 'Operator not found' });
+    const body = PatchOperatorBody.parse(req.body);
+    const updated = await operatorService.updateOperator(id, body);
+    return reply.code(200).send({ operator: updated });
   });
 
   // POST /operators/:id/profile — push full profile (create or replace)

@@ -218,7 +218,6 @@ export async function operatorRoutes(app: FastifyInstance) {
     if (!operator) return reply.code(404).send({ error: 'Operator not found' });
     const body = ProfileBody.parse(req.body);
     const profile = await operatorService.patchProfile(id, body);
-    if (!profile) return reply.code(404).send({ error: 'Profile not found — use POST to create it first' });
     return reply.code(200).send({ profile });
   });
 

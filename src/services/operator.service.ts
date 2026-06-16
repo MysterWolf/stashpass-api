@@ -279,9 +279,9 @@ export async function setProfile(operatorId: string, data: ProfileData): Promise
 
 // ─── Operator profile — partial update (PUT) ──────────────────────────────────
 
-export async function patchProfile(operatorId: string, data: Partial<ProfileData>): Promise<OperatorProfile | null> {
+export async function patchProfile(operatorId: string, data: Partial<ProfileData>): Promise<OperatorProfile> {
   const existing = await getProfile(operatorId);
-  if (!existing) return null;
+  if (!existing) return setProfile(operatorId, data as ProfileData);
 
   // Build SET clause dynamically — only update keys present in the request body
   const values: unknown[] = [operatorId];
@@ -327,7 +327,7 @@ export async function patchProfile(operatorId: string, data: Partial<ProfileData
     `UPDATE operator_profiles SET ${sets.join(', ')} WHERE operator_id = $1 RETURNING *`,
     values,
   );
-  return rows[0] ?? null;
+  return rows[0];
 }
 
 // ─── Specials — replace array ─────────────────────────────────────────────────

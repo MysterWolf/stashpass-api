@@ -153,6 +153,16 @@ src/
 
 > **Circles are NOT part of this API.** Circle / social sharing features will be built inside the CannaGuide app. The `circles`, `circle_members`, and `circle_shares` tables exist in the schema for future cross-app use but no API routes will be added here.
 
+### Phase 2d — Strains — COMPLETE
+- [x] Migration `006_strains.sql` — `strains` table (name, aliases JSONB, type CHECK, lineage, THC/CBD ranges, terpenes/effects/use_cases/flavors JSONB, about, cautions, best_method, beginner_friendly, session_count, soft-delete `active`)
+- [x] `GET /strains[?q=&type=]` — list all active strains; `?q=` searches name + JSONB alias array
+- [x] `GET /strains/search` — alias for `?q=` (legacy compat)
+- [x] `GET /strains/:id` — public fetch of one strain
+- [x] `POST /strains` — create (CIRCLES_API_SECRET auth)
+- [x] `PUT /strains/:id` — full update with dynamic SET (CIRCLES_API_SECRET auth)
+- [x] `DELETE /strains/:id` — soft-delete (CIRCLES_API_SECRET auth)
+- [x] `Strain` interface in types.ts; strain.service.ts with listStrains/getStrain/createStrain/updateStrain/deleteStrain
+
 ### Phase 3 — Operator Admin
 - [ ] Operator-scoped auth (role: `operator_admin`)
 - [ ] `GET /operators/:id/analytics` — earn/redeem aggregates by day/location
@@ -190,3 +200,4 @@ npm run dev                   # tsx watch — hot reload
 | 2026-06-09 | TypeScript fix — src/@types/fastify-jwt.d.ts augments FastifyJWT interface with payload/user shape; resolves req.user and req.jwtVerify errors across all routes and middleware; build is now error-free |
 | 2026-06-14 | Operator profiles — 004 migration (operator_profiles table + city/state/tier on operators); setProfile/patchProfile/replaceSpecials/deleteSpecial service funcs; POST+PUT /profile, POST+DELETE /specials, GET /nearby routes; CIRCLES_API_SECRET auth on all writes |
 | 2026-06-15 | Operator locations — 005 migration (operator_locations table + Green Room seed: Hoboken/Montclair/Red Bank/Westfield); getOperatorLocations/addOperatorLocation/updateOperatorLocation/deleteOperatorLocation service funcs; GET/POST/PUT/DELETE /operators/:id/locations routes; profile GET now embeds locations array |
+| 2026-06-16 | Strains — 006 migration + strain.service.ts + /strains routes (list/search/get/create/update/soft-delete); Strain interface added to types.ts; strainRoutes registered in server.ts |

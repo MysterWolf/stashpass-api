@@ -35,14 +35,17 @@ const SpecialSchema = z.object({
   updated_at: z.number().int().optional(),
 });
 
+// Empty strings from form fields are coerced to null before URL validation
+const urlField = z.preprocess((v) => (v === '' ? null : v), z.string().url().nullable().optional());
+
 const ProfileBody = z.object({
   about: z.string().max(2000).nullable().optional(),
   hours: z.record(z.string()).nullable().optional(),
-  website: z.string().url().nullable().optional(),
+  website: urlField,
   instagram: z.string().max(200).nullable().optional(),
-  leafly_url: z.string().url().nullable().optional(),
-  dutchie_url: z.string().url().nullable().optional(),
-  other_ordering_url: z.string().url().nullable().optional(),
+  leafly_url: urlField,
+  dutchie_url: urlField,
+  other_ordering_url: urlField,
   ordering_platform: z.string().max(100).nullable().optional(),
   payment_methods: z.array(z.string()).nullable().optional(),
   black_owned: z.boolean().optional(),
@@ -53,8 +56,8 @@ const ProfileBody = z.object({
   primary_color: z.string().max(20).nullable().optional(),
   secondary_color: z.string().max(20).nullable().optional(),
   background_color: z.string().max(20).nullable().optional(),
-  logo_url: z.string().url().nullable().optional(),
-  cover_image_url: z.string().url().nullable().optional(),
+  logo_url: urlField,
+  cover_image_url: urlField,
   palette: z.string().max(60).nullable().optional(),
   lat: z.number().min(-90).max(90).nullable().optional(),
   lng: z.number().min(-180).max(180).nullable().optional(),
@@ -205,7 +208,14 @@ export async function operatorRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const operator = await operatorService.getOperator(id);
     if (!operator) return reply.code(404).send({ error: 'Operator not found' });
-    const body = ProfileBody.parse(req.body);
+    let body: z.infer<typeof ProfileBody>;
+    try {
+      body = ProfileBody.parse(req.body);
+    } catch (err) {
+      console.error('[profile POST] validation failed — body:', JSON.stringify(req.body, null, 2));
+      console.error('[profile POST] zod errors:', JSON.stringify((err as z.ZodError).errors, null, 2));
+      throw err;
+    }
     const profile = await operatorService.setProfile(id, body);
     return reply.code(200).send({ profile });
   });
@@ -216,7 +226,14 @@ export async function operatorRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const operator = await operatorService.getOperator(id);
     if (!operator) return reply.code(404).send({ error: 'Operator not found' });
-    const body = ProfileBody.parse(req.body);
+    let body: z.infer<typeof ProfileBody>;
+    try {
+      body = ProfileBody.parse(req.body);
+    } catch (err) {
+      console.error('[profile PUT] validation failed — body:', JSON.stringify(req.body, null, 2));
+      console.error('[profile PUT] zod errors:', JSON.stringify((err as z.ZodError).errors, null, 2));
+      throw err;
+    }
     const profile = await operatorService.patchProfile(id, body);
     return reply.code(200).send({ profile });
   });

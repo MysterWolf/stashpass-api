@@ -117,3 +117,27 @@ export interface OperatorProfile {
   lat: string | null;
   lng: string | null;
 }
+
+export interface Strain {
+  id: string;
+  name: string;
+  aliases: string[];
+  type: 'sativa' | 'indica' | 'hybrid';
+  lineage: string | null;
+  thc_min: number | null;
+  thc_max: number | null;
+  cbd_min: number | null;
+  cbd_max: number | null;
+  terpenes: Array<{ name: string; effect: string }>;
+  effects: string[];
+  use_cases: string[];
+  flavors: string[];
+  about: string | null;
+  cautions: string | null;
+  best_method: string | null;
+  beginner_friendly: boolean;
+  session_count: number;
+  active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}

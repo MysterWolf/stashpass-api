@@ -18,6 +18,7 @@ export interface StrainData {
   cautions?: string | null;
   best_method?: string | null;
   beginner_friendly?: boolean;
+  dominance?: string | null;
 }
 
 // ─── List / Search ─────────────────────────────────────────────────────────────
@@ -69,9 +70,9 @@ export async function createStrain(data: StrainData): Promise<Strain> {
        name, aliases, type, lineage,
        thc_min, thc_max, cbd_min, cbd_max,
        terpenes, effects, use_cases, flavors,
-       about, cautions, best_method, beginner_friendly
+       about, cautions, best_method, beginner_friendly, dominance
      ) VALUES (
-       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
      ) RETURNING *`,
     [
       data.name,
@@ -90,6 +91,7 @@ export async function createStrain(data: StrainData): Promise<Strain> {
       data.cautions ?? null,
       data.best_method ?? null,
       data.beginner_friendly ?? false,
+      data.dominance ?? null,
     ],
   );
   return rows[0]!;
@@ -122,6 +124,7 @@ export async function updateStrain(id: string, data: Partial<StrainData>): Promi
   if ('cautions' in data)          maybeSet('cautions', data.cautions);
   if ('best_method' in data)       maybeSet('best_method', data.best_method);
   if ('beginner_friendly' in data) maybeSet('beginner_friendly', data.beginner_friendly ?? false);
+  if ('dominance' in data)         maybeSet('dominance', data.dominance);
 
   if (sets.length === 0) return getStrain(id);
 

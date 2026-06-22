@@ -69,8 +69,8 @@ const ProfileBody = z.object({
   logo_url: urlField,
   cover_image_url: urlField,
   palette: z.string().max(60).nullable().optional(),
-  lat: z.number().min(-90).max(90).nullable().optional(),
-  lng: z.number().min(-180).max(180).nullable().optional(),
+  lat: z.union([z.null(), z.coerce.number().min(-90).max(90)]).optional(),
+  lng: z.union([z.null(), z.coerce.number().min(-180).max(180)]).optional(),
 });
 
 const SpecialsBody = z.object({
@@ -83,8 +83,8 @@ const LocationBody = z.object({
   city: z.string().max(100).nullable().optional(),
   state: z.string().max(60).nullable().optional(),
   zip: z.string().max(20).nullable().optional(),
-  lat: z.number().min(-90).max(90).nullable().optional(),
-  lng: z.number().min(-180).max(180).nullable().optional(),
+  lat: z.union([z.null(), z.coerce.number().min(-90).max(90)]).optional(),
+  lng: z.union([z.null(), z.coerce.number().min(-180).max(180)]).optional(),
   phone: z.string().max(30).nullable().optional(),
   is_primary: z.boolean().optional(),
 });

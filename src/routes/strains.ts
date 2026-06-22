@@ -18,15 +18,19 @@ const TerpeneSchema = z.object({
   effect: z.string().max(200).default(''),
 });
 
+// pg returns NUMERIC columns as strings — accept both string and number inputs
+const pctField = (min: number, max: number) =>
+  z.union([z.null(), z.coerce.number().min(min).max(max)]).optional();
+
 const StrainBody = z.object({
   name:              z.string().min(1).max(200),
   aliases:           z.array(z.string()).default([]),
   type:              z.enum(['sativa', 'indica', 'hybrid']).default('hybrid'),
   lineage:           z.string().max(500).nullable().optional(),
-  thc_min:           z.number().min(0).max(100).nullable().optional(),
-  thc_max:           z.number().min(0).max(100).nullable().optional(),
-  cbd_min:           z.number().min(0).max(100).nullable().optional(),
-  cbd_max:           z.number().min(0).max(100).nullable().optional(),
+  thc_min:           pctField(0, 100),
+  thc_max:           pctField(0, 100),
+  cbd_min:           pctField(0, 100),
+  cbd_max:           pctField(0, 100),
   terpenes:          z.array(TerpeneSchema).default([]),
   effects:           z.array(z.string()).default([]),
   use_cases:         z.array(z.string()).default([]),

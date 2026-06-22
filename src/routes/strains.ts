@@ -39,6 +39,7 @@ const StrainBody = z.object({
   cautions:          z.string().max(2000).nullable().optional(),
   best_method:       z.string().max(50).nullable().optional(),
   beginner_friendly: z.boolean().default(false),
+  dominance:         z.enum(['true_sativa', 'sativa_dominant', 'balanced', 'indica_dominant', 'true_indica']).nullable().optional(),
 });
 
 const ListQuery = z.object({

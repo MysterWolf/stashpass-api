@@ -43,8 +43,11 @@ const StrainBody = z.object({
 });
 
 const ListQuery = z.object({
-  q:    z.string().optional(),
-  type: z.enum(['sativa', 'indica', 'hybrid']).optional(),
+  q:         z.string().optional(),
+  type:      z.enum(['sativa', 'indica', 'hybrid']).optional(),
+  // device_id accepted but no device_synced_strains table exists yet —
+  // falls back to returning all strains (Prompt 2 will add per-device scoping)
+  device_id: z.string().optional(),
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────

@@ -48,6 +48,9 @@ process.stdout.write('[startup] 10b — routes/circles\n');
 const { strainRoutes }   = req('./routes/strains');
 process.stdout.write('[startup] 10c — routes/strains\n');
 
+const { queueRoutes }    = req('./routes/queue');
+process.stdout.write('[startup] 10d — routes/queue\n');
+
 // ─── Env var check ────────────────────────────────────────────────────────────
 
 const REQUIRED_ENV = ['DATABASE_URL', 'REDIS_URL', 'JWT_SECRET'];
@@ -81,6 +84,7 @@ app.register(walletRoutes,   { prefix: '/wallet' });
 app.register(operatorRoutes, { prefix: '/operators' });
 app.register(circlesRoutes,  { prefix: '/circles' });
 app.register(strainRoutes,   { prefix: '/strains' });
+app.register(queueRoutes,    { prefix: '/queue' });
 app.get('/health', async () => ({ status: 'ok', ts: new Date().toISOString() }));
 app.setErrorHandler(errorHandler);
 process.stdout.write('[startup] 17 — all routes registered\n');

@@ -23,9 +23,22 @@ export interface StrainData {
 
 // ─── List / Search ─────────────────────────────────────────────────────────────
 
-export async function listStrains(params?: { q?: string; type?: string }): Promise<Strain[]> {
+export async function listStrains(params?: { q?: string; type?: string; device_id?: string }): Promise<Strain[]> {
   const values: unknown[] = [];
   const wheres: string[] = ['active = TRUE'];
+
+  if (params?.device_id) {
+    // When a device_id is supplied, only return strains this device has a
+    // recorded interest in (submitted via queue or matched an existing strain).
+    // No device_id = admin/browser context — returns everything.
+    values.push(JSON.stringify([params.device_id]));
+    wheres.push(`EXISTS (
+      SELECT 1 FROM strain_queue sq
+      WHERE sq.strain_id = strains.id
+        AND sq.status = 'published'
+        AND sq.device_ids @> $${values.length}::jsonb
+    )`);
+  }
 
   if (params?.type) {
     values.push(params.type);
@@ -35,7 +48,6 @@ export async function listStrains(params?: { q?: string; type?: string }): Promi
   if (params?.q) {
     const pattern = `%${params.q.toLowerCase()}%`;
     values.push(pattern);
-    // Search by name or any alias value
     wheres.push(`(
       lower(name) LIKE $${values.length}
       OR EXISTS (

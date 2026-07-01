@@ -54,10 +54,10 @@ const ListQuery = z.object({
 
 export async function strainRoutes(app: FastifyInstance) {
 
-  // GET /strains — list all (with optional ?q= search and ?type= filter)
+  // GET /strains — list all (with optional ?q= search, ?type= filter, ?device_id= scoping)
   app.get('/', async (req, reply) => {
     const query = ListQuery.parse(req.query);
-    const strains = await strainService.listStrains({ q: query.q, type: query.type });
+    const strains = await strainService.listStrains({ q: query.q, type: query.type, device_id: query.device_id });
     return reply.code(200).send({ strains });
   });
 

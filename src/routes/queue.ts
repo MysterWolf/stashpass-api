@@ -81,6 +81,17 @@ export async function queueRoutes(app: FastifyInstance) {
       normalizeName(s.name) === normName && typesCompatible(s.type, apiType),
     );
     if (existingStrain) {
+      // Record device interest so this strain is returned on the device's next sync.
+      // Uses @> (contains) to avoid duplicate entries in the JSONB array.
+      await db.query(
+        `UPDATE strain_queue
+         SET device_ids = CASE
+           WHEN device_ids @> $1::jsonb THEN device_ids
+           ELSE device_ids || $1::jsonb
+         END
+         WHERE strain_id = $2 AND status = 'published'`,
+        [JSON.stringify([device_id]), existingStrain.id],
+      );
       return reply.code(200).send({ status: 'exists', strain_id: existingStrain.id });
     }
 

@@ -28,16 +28,26 @@ export async function listStrains(params?: { q?: string; type?: string; device_i
   const wheres: string[] = ['active = TRUE'];
 
   if (params?.device_id) {
-    // When a device_id is supplied, only return strains this device has a
-    // recorded interest in (submitted via queue or matched an existing strain).
-    // No device_id = admin/browser context — returns everything.
-    values.push(JSON.stringify([params.device_id]));
-    wheres.push(`EXISTS (
-      SELECT 1 FROM strain_queue sq
-      WHERE sq.strain_id = strains.id
-        AND sq.status = 'published'
-        AND sq.device_ids @> $${values.length}::jsonb
-    )`);
+    // Check whether this device has any queue history at all.
+    // A device with no queue entries predates the queue feature — fall back to
+    // returning everything so the sync keeps working during the transition.
+    // Once the catch-up sweep (client-side) has submitted at least one strain,
+    // this check flips and per-device filtering activates automatically.
+    const deviceJson = JSON.stringify([params.device_id]);
+    const { rows: hasHistory } = await db.query(
+      `SELECT 1 FROM strain_queue WHERE device_ids @> $1::jsonb LIMIT 1`,
+      [deviceJson],
+    );
+    if (hasHistory.length > 0) {
+      values.push(deviceJson);
+      wheres.push(`EXISTS (
+        SELECT 1 FROM strain_queue sq
+        WHERE sq.strain_id = strains.id
+          AND sq.status = 'published'
+          AND sq.device_ids @> $${values.length}::jsonb
+      )`);
+    }
+    // else: no history → no WHERE addition → returns all (pre-queue era device)
   }
 
   if (params?.type) {

@@ -43,21 +43,23 @@ const StrainBody = z.object({
 });
 
 const ListQuery = z.object({
-  q:         z.string().optional(),
-  type:      z.enum(['sativa', 'indica', 'hybrid']).optional(),
-  // device_id accepted but no device_synced_strains table exists yet —
-  // falls back to returning all strains (Prompt 2 will add per-device scoping)
-  device_id: z.string().optional(),
+  q:          z.string().optional(),
+  type:       z.enum(['sativa', 'indica', 'hybrid']).optional(),
+  device_id:  z.string().optional(),
+  linked_ids: z.string().optional(), // comma-separated UUIDs of already-linked strains
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 export async function strainRoutes(app: FastifyInstance) {
 
-  // GET /strains — list all (with optional ?q= search, ?type= filter, ?device_id= scoping)
+  // GET /strains — list all (with optional ?q= search, ?type= filter, ?device_id= scoping, ?linked_ids= update propagation)
   app.get('/', async (req, reply) => {
     const query = ListQuery.parse(req.query);
-    const strains = await strainService.listStrains({ q: query.q, type: query.type, device_id: query.device_id });
+    const linkedIds = query.linked_ids
+      ? query.linked_ids.split(',').map(s => s.trim()).filter(Boolean)
+      : undefined;
+    const strains = await strainService.listStrains({ q: query.q, type: query.type, device_id: query.device_id, linked_ids: linkedIds });
     return reply.code(200).send({ strains });
   });
 

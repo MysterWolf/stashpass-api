@@ -23,18 +23,31 @@ export interface StrainData {
 
 // ─── List / Search ─────────────────────────────────────────────────────────────
 
-export async function listStrains(params?: { q?: string; type?: string; device_id?: string }): Promise<Strain[]> {
+export async function listStrains(params?: { q?: string; type?: string; device_id?: string; linked_ids?: string[] }): Promise<Strain[]> {
   const values: unknown[] = [];
   const wheres: string[] = ['active = TRUE'];
 
+  // Scoping: device_id (discovery) OR linked_ids (update propagation for already-linked strains).
+  // Combined with OR so a strain appears if either condition matches.
+  const scopeConditions: string[] = [];
+
   if (params?.device_id) {
     values.push(JSON.stringify([params.device_id]));
-    wheres.push(`EXISTS (
+    scopeConditions.push(`EXISTS (
       SELECT 1 FROM strain_queue sq
       WHERE sq.strain_id = strains.id
         AND sq.status = 'published'
         AND sq.device_ids @> $${values.length}::jsonb
     )`);
+  }
+
+  if (params?.linked_ids && params.linked_ids.length > 0) {
+    values.push(params.linked_ids);
+    scopeConditions.push(`strains.id = ANY($${values.length}::uuid[])`);
+  }
+
+  if (scopeConditions.length > 0) {
+    wheres.push(`(${scopeConditions.join(' OR ')})`);
   }
 
   if (params?.type) {

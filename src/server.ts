@@ -51,6 +51,9 @@ process.stdout.write('[startup] 10c — routes/strains\n');
 const { queueRoutes }    = req('./routes/queue');
 process.stdout.write('[startup] 10d — routes/queue\n');
 
+const { aiRoutes }       = req('./routes/ai');
+process.stdout.write('[startup] 10e — routes/ai\n');
+
 // ─── Env var check ────────────────────────────────────────────────────────────
 
 const REQUIRED_ENV = ['DATABASE_URL', 'REDIS_URL', 'JWT_SECRET'];
@@ -85,6 +88,7 @@ app.register(operatorRoutes, { prefix: '/operators' });
 app.register(circlesRoutes,  { prefix: '/circles' });
 app.register(strainRoutes,   { prefix: '/strains' });
 app.register(queueRoutes,    { prefix: '/queue' });
+app.register(aiRoutes,       { prefix: '/ai' });
 app.get('/health', async () => ({ status: 'ok', ts: new Date().toISOString() }));
 app.setErrorHandler(errorHandler);
 process.stdout.write('[startup] 17 — all routes registered\n');

@@ -30,9 +30,8 @@ export async function aiRoutes(app: FastifyInstance) {
     try {
       const enriched = await enrichStrain(name, type);
       return reply.code(200).send({ enriched });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return reply.code(500).send({ error: msg });
+    } catch {
+      return reply.code(500).send({ error: 'Unknown error' });
     }
   });
 }

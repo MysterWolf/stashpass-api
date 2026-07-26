@@ -17,6 +17,14 @@ const EnrichBody = z.object({
 });
 
 export async function aiRoutes(app: FastifyInstance) {
+  app.get('/ping', async (req, reply) => {
+    return reply.code(200).send({
+      alive: true,
+      apiKeyPresent: !!process.env.ANTHROPIC_API_KEY,
+      apiKeyFirst4: process.env.ANTHROPIC_API_KEY?.slice(0, 4) ?? 'MISSING',
+    });
+  });
+
   app.post('/enrich-strain', async (req, reply) => {
     if (!checkApiSecret(req, reply)) return;
     const { name, type } = EnrichBody.parse(req.body);

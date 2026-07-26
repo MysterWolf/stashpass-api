@@ -23,7 +23,7 @@ const VALID_METHODS   = ['flower', 'vape', 'edible', 'concentrate', 'pre-roll'];
 
 export async function enrichStrain(name: string, type?: string): Promise<EnrichedStrain> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  console.log('[ai.service] ANTHROPIC_API_KEY present:', !!process.env.ANTHROPIC_API_KEY, 'first 4 chars:', process.env.ANTHROPIC_API_KEY?.slice(0, 4) ?? 'MISSING');
+  process.stdout.write('[ai.service] ANTHROPIC_API_KEY present: ' + !!process.env.ANTHROPIC_API_KEY + ' first4: ' + (process.env.ANTHROPIC_API_KEY?.slice(0, 4) ?? 'MISSING') + '\n');
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
 
   const client = new Anthropic({ apiKey });

@@ -20,6 +20,13 @@ export async function aiRoutes(app: FastifyInstance) {
   app.post('/enrich-strain', async (req, reply) => {
     if (!checkApiSecret(req, reply)) return;
     const { name, type } = EnrichBody.parse(req.body);
+    return reply.code(200).send({
+      debug: true,
+      apiKeyPresent: !!process.env.ANTHROPIC_API_KEY,
+      apiKeyFirst4: process.env.ANTHROPIC_API_KEY?.slice(0, 4) ?? 'MISSING',
+      secretPresent: !!process.env.CIRCLES_API_SECRET,
+      bodyReceived: req.body,
+    });
     try {
       const enriched = await enrichStrain(name, type);
       return reply.code(200).send({ enriched });

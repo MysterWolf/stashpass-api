@@ -56,7 +56,7 @@ process.stdout.write('[startup] 10e — routes/ai\n');
 
 // ─── Env var check ────────────────────────────────────────────────────────────
 
-const REQUIRED_ENV = ['DATABASE_URL', 'REDIS_URL', 'JWT_SECRET'];
+const REQUIRED_ENV = ['DATABASE_URL', 'REDIS_URL', 'JWT_SECRET', 'ANTHROPIC_API_KEY'];
 const missing = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missing.length > 0) {
   process.stdout.write(`[startup] FAIL — missing env vars: ${missing.join(', ')}\n`);
